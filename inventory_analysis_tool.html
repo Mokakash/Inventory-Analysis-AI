@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cat 5 Combined Analysis Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f4f8;color:#1a202c;}
+  .header{background:#1e3a5f;color:white;padding:20px 30px;}
+  .header h1{font-size:20px;font-weight:600;}
+  .header p{font-size:13px;opacity:0.7;margin-top:4px;}
+  .container{max-width:1200px;margin:30px auto;padding:0 20px;}
+  .card{background:white;border-radius:12px;padding:28px;margin-bottom:24px;box-shadow:0 1px 4px rgba(0,0,0,0.08);}
+  .upload-zone{border:2px dashed #cbd5e0;border-radius:10px;padding:40px 20px;text-align:center;cursor:pointer;transition:all 0.2s;}
+  .upload-zone:hover,.upload-zone.drag{border-color:#1e3a5f;background:#f7faff;}
+  .upload-zone p{color:#718096;font-size:14px;margin-top:8px;}
+  .upload-zone strong{color:#1e3a5f;}
+  input[type=file]{display:none;}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:500;transition:all 0.2s;}
+  .btn-primary{background:#1e3a5f;color:white;}.btn-primary:hover{background:#162d4a;}
+  .btn-secondary{background:#e2e8f0;color:#4a5568;}.btn-secondary:hover{background:#cbd5e0;}
+  .status{padding:12px 16px;border-radius:8px;font-size:14px;margin-top:12px;}
+  .status.info{background:#ebf8ff;color:#2b6cb0;border-left:4px solid #3182ce;}
+  .status.success{background:#f0fff4;color:#276749;border-left:4px solid #38a169;}
+  .status.error{background:#fff5f5;color:#c53030;border-left:4px solid #e53e3e;}
+  .tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid #e2e8f0;}
+  .tab{padding:10px 20px;cursor:pointer;font-size:14px;font-weight:500;color:#718096;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.2s;}
+  .tab.active{color:#1e3a5f;border-bottom-color:#1e3a5f;}
+  .tab-content{display:none;}.tab-content.active{display:block;}
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:20px;}
+  .stat-card{background:#f7faff;border-radius:10px;padding:14px;text-align:center;border:1px solid #e2e8f0;}
+  .stat-card .num{font-size:26px;font-weight:700;color:#1e3a5f;}
+  .stat-card .num.red{color:#c53030;}.stat-card .num.amber{color:#b7791f;}.stat-card .num.green{color:#276749;}
+  .stat-card .label{font-size:11px;color:#718096;margin-top:4px;}
+  .summary-box{background:#f7faff;border:1px solid #bee3f8;border-radius:10px;padding:20px;white-space:pre-wrap;font-size:14px;line-height:1.7;color:#2d3748;}
+  .table-wrap{overflow-x:auto;max-height:380px;overflow-y:auto;border-radius:8px;border:1px solid #e2e8f0;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th{background:#1e3a5f;color:white;padding:9px 11px;text-align:left;position:sticky;top:0;white-space:nowrap;}
+  td{padding:7px 11px;border-bottom:1px solid #f0f4f8;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;}
+  tr:hover td{background:#f7faff;}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
+  .badge-yes{background:#fff0f0;color:#c53030;}.badge-no{background:#f0fff4;color:#276749;}.badge-warn{background:#fffbeb;color:#b7791f;}
+  .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;}
+  h2{font-size:16px;font-weight:600;color:#1e3a5f;margin-bottom:16px;}
+  .section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .loading{display:none;align-items:center;gap:10px;color:#718096;font-size:14px;}
+  .loading.show{display:flex;}
+  .spinner{width:18px;height:18px;border:2px solid #e2e8f0;border-top-color:#1e3a5f;border-radius:50%;animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .hidden{display:none;}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media(max-width:768px){.two-col{grid-template-columns:1fr;}}
+  .summary-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#1e3a5f;margin-bottom:8px;}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🔧 Cat 5 Inventory Analysis Tool</h1>
+  <p>Upload NetSuite CSV → Location-level + SKU-level analysis → Excel export with 2 tabs</p>
+</div>
+<div class="container">
+  <div class="card">
+    <h2>Upload NetSuite Export</h2>
+    <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <svg width="36" height="36" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+      <p><strong>Click to upload</strong> or drag & drop</p>
+      <p style="font-size:12px;margin-top:4px;">NetSuite export CSV — multi-location</p>
+    </div>
+    <input type="file" id="fileInput" accept=".csv">
+    <div id="uploadStatus" class="hidden"></div>
+  </div>
+
+  <div id="resultsSection" class="hidden">
+    <div class="card">
+      <div class="section-title">
+        <h2>📝 Manager Summary</h2>
+        <div class="loading" id="summaryLoading"><div class="spinner"></div> Generating...</div>
+      </div>
+      <div class="two-col">
+        <div><div class="summary-label">📍 Location-Level Insights</div><div class="summary-box" id="summaryLoc"></div></div>
+        <div><div class="summary-label">📦 SKU-Level Insights</div><div class="summary-box" id="summarySku"></div></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-secondary" onclick="copySummary()">📋 Copy Both Summaries</button>
+        <button class="btn btn-primary" onclick="downloadExcel()">⬇️ Download Excel (2 tabs)</button>
+        <button class="btn btn-secondary" onclick="downloadFlaggedExcel()">⬇️ Download Flagged Only (2 tabs)</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('loc')">📍 Location-Level Data</div>
+        <div class="tab" onclick="switchTab('sku')">📦 SKU-Level Data</div>
+      </div>
+      <div id="tab-loc" class="tab-content active">
+        <div class="stats-grid" id="statsLoc"></div>
+        <h2 style="margin-bottom:10px;">Top 100 Flagged Locations (by Risk Score)</h2>
+        <div class="table-wrap"><table><thead id="headLoc"></thead><tbody id="bodyLoc"></tbody></table></div>
+      </div>
+      <div id="tab-sku" class="tab-content">
+        <div class="stats-grid" id="statsSku"></div>
+        <h2 style="margin-bottom:10px;">Top 100 Flagged SKUs (by Risk Score)</h2>
+        <div class="table-wrap"><table><thead id="headSku"></thead><tbody id="bodySku"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let locRows=[], skuRows=[], rawHeaders=[];
+
+// ── column name constants ─────────────────────────────────────────────────────
+const WTD_COL    = 'Weighted Avg Demand 4-2-1 (30/90/365)';
+const DEMAND_COL = 'Demand - Est. of Month Supply';
+const CAT_NAMES  = {
+  'Cat 1':'Cat 1 - Never Sold',
+  'Cat 2':'Cat 2 - On Sale & Slow',
+  'Cat 3':'Cat 3 - Discontinued',
+  'Cat 4':'Cat 4 - Odd Size',
+  'Cat 5':'Cat 5 - Overstock & Slow'
+};
+const PREVIEW_COLS = ['Name','Brand','Group','Location Available','ALL Time',
+  'Recommend Discontinue','Reason','Is On Orders','Priority (1=Worst)',
+  'Risk Score (higher is worst)','Cat 4 - Odd Size','Cat 5 - Overstock & Slow',DEMAND_COL];
+
+// Currency columns by header keywords (AC–AN in original = price/cost cols)
+const CURRENCY_COLS = ['Price Level AC','Price Level C','Price Level D','Price Level E',
+  'Price Level H','Price Level DC-A','MAP','Purchase Price','SFTP',
+  'Average Cost','Max of Location Average Cost','Location Average Cost'];
+
+// ── upload ────────────────────────────────────────────────────────────────────
+const dz=document.getElementById('dropZone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');handleFile(e.dataTransfer.files[0]);});
+document.getElementById('fileInput').addEventListener('change',e=>handleFile(e.target.files[0]));
+
+function setStatus(msg,type){const el=document.getElementById('uploadStatus');el.className=`status ${type}`;el.textContent=msg;el.classList.remove('hidden');}
+
+function handleFile(file){
+  if(!file)return;
+  if(!file.name.endsWith('.csv')){setStatus('Please upload a CSV file.','error');return;}
+  setStatus(`Reading ${file.name}...`,'info');
+  Papa.parse(file,{header:true,skipEmptyLines:true,dynamicTyping:false,
+    complete:r=>{
+      if(!r.data?.length){setStatus('File appears empty.','error');return;}
+      rawHeaders=r.meta.fields||[];
+      setStatus(`Loaded ${r.data.length.toLocaleString()} rows. Processing...`,'success');
+      setTimeout(()=>processAll(r.data),50);
+    },
+    error:()=>setStatus('Failed to parse CSV.','error')
+  });
+}
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+const g=(row,name)=>(row[name]??row[name?.trim()]??'').toString().trim();
+const n=(row,name)=>{const v=g(row,name);return parseFloat(v.replace(/,/g,''))||0;};
+const n30=row=>n(row,'0-30 Days')||n(row,'0-30 Days ');
+const addMonths=(d,m)=>{const r=new Date(d);r.setMonth(r.getMonth()+m);return r;};
+function parseDate(v){
+  if(!v)return null;const s=v.toString().trim();if(!s)return null;
+  const num=parseFloat(s);
+  if(!isNaN(num)&&num>40000)return new Date(Date.UTC(1899,11,30)+num*86400000);
+  const d=new Date(s);return isNaN(d.getTime())?null:d;
+}
+const fmtDate=d=>d?d.toLocaleDateString('en-US'):'';
+function percentile(arr,p){
+  if(!arr.length)return 0;
+  const s=[...arr].sort((a,b)=>a-b);
+  const i=(p/100)*(s.length-1),lo=Math.floor(i),hi=Math.ceil(i);
+  return s[lo]+(s[hi]-s[lo])*(i-lo);
+}
+
+// ── Cat 4: Odd Size ───────────────────────────────────────────────────────────
+function buildOddSizeMap(data){
+  const map={};
+  data.forEach(row=>{
+    const cls=g(row,'Class').toLowerCase(),size=g(row,'RAW SIZE');
+    if(!size)return;
+    const sales12=n30(row)+n(row,'31-90 Days')+n(row,'91-365 Days');
+    if(!map[cls])map[cls]={};
+    if(!map[cls][size])map[cls][size]=0;
+    map[cls][size]+=sales12;
+  });
+  const thresholds={};
+  Object.keys(map).forEach(cls=>{thresholds[cls]=percentile(Object.values(map[cls]),25);});
+  const oddMap={};
+  Object.keys(map).forEach(cls=>{
+    Object.keys(map[cls]).forEach(size=>{oddMap[cls+'|'+size]=map[cls][size]<=thresholds[cls];});
+  });
+  return oddMap;
+}
+
+// ── Demand LET logic ──────────────────────────────────────────────────────────
+function calcDemand(inv, wtdAvg){
+  if(inv>0){
+    if(wtdAvg>0) return inv/wtdAvg;
+    return 'Dead Item (No sales in last 12 months - Inventory exists)';
+  } else {
+    if(wtdAvg>0) return 'Sold but no inventory';
+    return 'Dead Item (No sales in last 12 months - No inventory)';
+  }
+}
+
+// ── formula logic ─────────────────────────────────────────────────────────────
+function applyFormulas(row, oddMap){
+  const s0_60   =n(row,'0-60 days (0-2 mo)');
+  const s61_120 =n(row,'61-120 days (2-4 mo)');
+  const s121_180=n(row,'121-180 days (4 to 6 mo)');
+  const s121_365=n(row,'121-365 days  (4 to 12 mo)');
+  const allTime =n(row,'ALL Time');
+  const locAvail=n(row,'Location Available');
+  const onOrder =n(row,'Location On Order');
+
+  // Weighted Avg Demand 4-2-1
+  const d30=n30(row),d90=n(row,'31-90 Days'),d365=n(row,'91-365 Days');
+  const wtdAvg=Math.round(((d30*4)+((d90/2)*2)+((d365/9)*1))/7*100)/100;
+
+  // Demand - Est. of Month Supply (LET logic)
+  const demand=calcDemand(locAvail,wtdAvg);
+
+  // BA - Newer/Older
+  const aw=parseDate(g(row,'Location First Receipt Date from PO (1st Time Entered Warehouse - Originating From a PO)'));
+  const ax=parseDate(g(row,'Location First Receipt Date from TO'));
+  const cutoff=addMonths(new Date(),-3);
+  let ba;
+  if(aw&&aw>=cutoff&&(!ax||ax>=cutoff))ba='Item Newly Receive through PO or TO';
+  else if(!aw&&ax&&ax>=cutoff)ba='Item Newly Receive through PO or TO';
+  else ba='Older Item';
+
+  // Cat 1 - Never Sold
+  const bb=allTime===0?'Never Sold':'';
+
+  // Cat 2 - On Sale & Slow
+  const onSale=g(row,'On Sale').toLowerCase()==='yes';
+  const bc=(onSale&&s0_60===0&&s61_120===0&&s121_180===0&&s121_365<8&&allTime<50)?'On Sale & Slow':'';
+
+  // Cat 3 - Discontinued
+  const bd=g(row,'Discontinued Item').toLowerCase()==='yes'?'Discontinued':'';
+
+  // Cat 4 - Odd Size
+  const cls=g(row,'Class').toLowerCase(),size=g(row,'RAW SIZE');
+  const be=oddMap[cls+'|'+size]===true?'Odd Size':'';
+
+  // Cat 5 - Overstock & Slow
+  // Overstock: demand >= 3 months OR dead item with inventory
+  const s0_120=s0_60+s61_120;
+  const s0_180=s0_60+s61_120+s121_180;
+  const s0_365=s0_60+s61_120+s121_180+s121_365;
+  const isOverstock=(typeof demand==='number'&&demand>=3)||demand==='Dead Item (No sales in last 12 months - Inventory exists)';
+  const isSlow=s0_60<=4&&s0_120<=8&&s0_180<=16&&s0_365<=20&&allTime<50;
+  const bf=(isOverstock&&isSlow)?'Overstock & Slow':'';
+
+  // Is in Cat-5
+  const flags=[bb,bc,bd,be,bf].filter(x=>x);
+  const bg=flags.length>0?'YES':'NO';
+  const bh=flags.length;
+
+  // Recommend Discontinue
+  const disc=g(row,'Discontinued Item').toLowerCase()==='yes';
+  const type=g(row,'Type'),brand=g(row,'Brand'),group=g(row,'Group');
+  const cNote=g(row,"Camilo's Note ");
+  let bj;
+  if(disc)bj='No - Already Disc.';
+  else if(type==='Assembly/Bill of Materials')bj='No - Assembly';
+  else if(ba==='Item Newly Receive through PO or TO'||cNote==='New items per Camilo')bj='No - New Item';
+  else if(bg==='NO')bj='No - Not in Cat-5';
+  else if(bd==='Discontinued')bj='No - Not in Cat-5';
+  else if(brand==='Amani')bj=group==='AM-W'?'YES - Amani AM-W Model (Inactive??!)':'No - It\'s Amani';
+  else bj='YES';
+
+  // Reason
+  const orderSuffix=onOrder>0?' [On Order]':'';
+  const noFlags=['No - Already Disc.','No - Assembly','No - New Item','No - Active Sales','No - Not in Cat-5',"No - It's Amani"];
+  let bk;
+  if(bj==='No - Already Disc.')bk='Already discontinued';
+  else if(bj==='No - Assembly')bk='Assembly/BOM - skip';
+  else if(bj==='No - New Item')bk='New item - skip';
+  else if(bj==='No - Active Sales')bk='Has recent sales, no category flags';
+  else if(bb==='Never Sold')bk='Never sold'+(bh>=2?` + ${bh-1} other issue(s)`:'')+orderSuffix;
+  else if(allTime===0)bk='Zero all-time sales'+orderSuffix;
+  else if(s0_60===0&&s61_120===0&&s121_180===0)bk='No recent sales (0-6mo)'+(bf?', '+bf:'')+(be?', '+be:'')+orderSuffix;
+  else bk='Cat flags: '+[bb,bc,be,bf].filter(x=>x).join('; ')+(onOrder>0?' [On Order]':'');
+
+  const bl=onOrder>0?`YES - ${onOrder} units`:'No';
+
+  // Priority
+  let bm='';
+  if(!noFlags.includes(bj)){
+    if(allTime===0&&bh>=2)bm=1;
+    else if(bh>=3)bm=1;
+    else if(allTime===0)bm=2;
+    else if(bh===2)bm=3;
+    else if(s0_60===0&&s61_120===0&&s121_180===0&&allTime>0)bm=4;
+    else if(bh===1)bm=4;
+    else bm=5;
+  }
+
+  // Risk Score
+  let bn='';
+  if(!noFlags.includes(bj)){
+    let score=0;
+    if(allTime===0)score+=35;
+    else if(s0_60===0&&s61_120===0&&s121_180===0)score+=15;
+    else if(s0_60===0&&s61_120===0)score+=10;
+    else if(s0_60===0)score+=5;
+    score+=(bh-(bb==='Never Sold'?1:0))*10;
+    if(bf)score+=10;
+    if(be)score+=8;
+    if(onOrder>0)score+=7;
+    if(locAvail>0&&locAvail<4)score+=3;
+    bn=score;
+  }
+
+  return {
+    ...row,
+    'Newer (if Added in the Last 3-Month) vs Older Inventory':ba,
+    'Cat 1 - Never Sold':bb,
+    'Cat 2 - On Sale & Slow':bc,
+    'Cat 3 - Discontinued':bd,
+    'Cat 4 - Odd Size':be,
+    'Cat 5 - Overstock & Slow':bf,
+    'Is in 5 Cat?':bg,
+    'Cross-Appearance Count':bh,
+    'Recommend Discontinue':bj,
+    'Reason':bk,
+    'Is On Orders':bl,
+    'Priority (1=Worst)':bm,
+    'Risk Score (higher is worst)':bn,
+    [WTD_COL]:wtdAvg,
+    [DEMAND_COL]:demand
+  };
+}
+
+// ── SKU consolidation ─────────────────────────────────────────────────────────
+const SUM_COLS=['Location Available','Location On Order','Location On Water',
+  'China Stock','Production 2025','0-30 Days','0-30 Days ','31-90 Days','91-365 Days',
+  '0-60 days (0-2 mo)','61-120 days (2-4 mo)','121-180 days (4 to 6 mo)',
+  '121-365 days  (4 to 12 mo)','121-548 days (4 to 18 mo)','121+ Days (all time)','ALL Time','Location PO Count'];
+
+function getAgg(col){
+  if(SUM_COLS.includes(col))return 'sum';
+  if(col==='Location Average Cost')return 'max';
+  if(col==='Average Cost')return 'first';
+  if(col==='Inventory Location')return 'allLoc';
+  const c=col.toLowerCase();
+  if(c.includes('date')||c.includes('receipt')||c.includes('invoice')){
+    return c.includes('last')||c.includes('any type')?'maxdate':'mindate';
+  }
+  return 'first';
+}
+
+function consolidateSKU(data){
+  const groups={},order=[];
+  data.forEach(row=>{
+    const key=g(row,'Name');if(!key)return;
+    if(!groups[key]){groups[key]=[];order.push(key);}
+    groups[key].push(row);
+  });
+  return order.map(key=>{
+    const rows=groups[key],first=rows[0];
+    const out={};
+    rawHeaders.forEach(col=>{
+      const agg=getAgg(col);
+      if(agg==='allLoc'){out[col]='All Locations';return;}
+      if(agg==='first'){out[col]=first[col]??'';return;}
+      if(agg==='sum'){out[col]=rows.reduce((s,r)=>s+n(r,col),0);return;}
+      if(agg==='max'){out[col]=Math.max(...rows.map(r=>n(r,col)));return;}
+      if(agg==='maxdate'){
+        const dates=rows.map(r=>parseDate(g(r,col))).filter(Boolean);
+        out[col]=dates.length?fmtDate(new Date(Math.max(...dates.map(d=>d.getTime())))):'';return;
+      }
+      if(agg==='mindate'){
+        const dates=rows.map(r=>parseDate(g(r,col))).filter(Boolean);
+        out[col]=dates.length?fmtDate(new Date(Math.min(...dates.map(d=>d.getTime())))):'';return;
+      }
+    });
+    if('Location Average Cost' in out){
+      out['Max of Location Average Cost']=out['Location Average Cost'];
+      delete out['Location Average Cost'];
+    }
+    return out;
+  });
+}
+
+// ── main process ──────────────────────────────────────────────────────────────
+function processAll(data){
+  const oddMap=buildOddSizeMap(data);
+  locRows=data.map(row=>applyFormulas(row,oddMap));
+  const consolidated=consolidateSKU(data);
+  skuRows=consolidated.map(row=>applyFormulas(row,oddMap));
+  setStatus(`Done! ${locRows.length.toLocaleString()} location rows → ${skuRows.length.toLocaleString()} unique SKUs.`,'success');
+  renderStats('loc',locRows);renderStats('sku',skuRows);
+  renderTable('loc',locRows);renderTable('sku',skuRows);
+  generateSummary();
+  document.getElementById('resultsSection').classList.remove('hidden');
+}
+
+// ── stats ─────────────────────────────────────────────────────────────────────
+function renderStats(type,rows){
+  const total=rows.length;
+  const yes=rows.filter(r=>r['Recommend Discontinue']==='YES').length;
+  const p1=rows.filter(r=>r['Priority (1=Worst)']===1).length;
+  const never=rows.filter(r=>r['Cat 1 - Never Sold']==='Never Sold').length;
+  const alreadyDisc=rows.filter(r=>r['Recommend Discontinue']==='No - Already Disc.').length;
+  const onOrd=rows.filter(r=>r['Is On Orders']!=='No').length;
+  const odd=rows.filter(r=>r['Cat 4 - Odd Size']==='Odd Size').length;
+  const over=rows.filter(r=>r['Cat 5 - Overstock & Slow']==='Overstock & Slow').length;
+  const label=type==='loc'?'Location Rows':'Unique SKUs';
+  document.getElementById(`stats${type==='loc'?'Loc':'Sku'}`).innerHTML=`
+    <div class="stat-card"><div class="num">${total.toLocaleString()}</div><div class="label">${label}</div></div>
+    <div class="stat-card"><div class="num red">${yes.toLocaleString()}</div><div class="label">Recommend Discontinue</div></div>
+    <div class="stat-card"><div class="num amber">${p1.toLocaleString()}</div><div class="label">Priority 1</div></div>
+    <div class="stat-card"><div class="num">${never.toLocaleString()}</div><div class="label">Never Sold</div></div>
+    <div class="stat-card"><div class="num">${odd.toLocaleString()}</div><div class="label">Odd Size (Cat 4)</div></div>
+    <div class="stat-card"><div class="num">${over.toLocaleString()}</div><div class="label">Overstock & Slow (Cat 5)</div></div>
+    <div class="stat-card"><div class="num green">${alreadyDisc.toLocaleString()}</div><div class="label">Already Disc.</div></div>
+    <div class="stat-card"><div class="num amber">${onOrd.toLocaleString()}</div><div class="label">On Order</div></div>`;
+}
+
+// ── table preview ─────────────────────────────────────────────────────────────
+function renderTable(type,rows){
+  const flagged=rows.filter(r=>r['Recommend Discontinue']==='YES')
+    .sort((a,b)=>(parseFloat(b['Risk Score (higher is worst)'])||0)-(parseFloat(a['Risk Score (higher is worst)'])||0))
+    .slice(0,100);
+  const head=document.getElementById(`head${type==='loc'?'Loc':'Sku'}`);
+  const body=document.getElementById(`body${type==='loc'?'Loc':'Sku'}`);
+  head.innerHTML='<tr>'+PREVIEW_COLS.map(c=>`<th>${c}</th>`).join('')+'</tr>';
+  body.innerHTML=flagged.map(r=>'<tr>'+PREVIEW_COLS.map(c=>{
+    const v=(r[c]??'').toString();let cell=v;
+    if(c==='Recommend Discontinue')cell=`<span class="badge ${v==='YES'?'badge-yes':'badge-no'}">${v}</span>`;
+    if(c==='Is On Orders'&&v!=='No')cell=`<span class="badge badge-warn">${v}</span>`;
+    if((c==='Cat 4 - Odd Size'||c==='Cat 5 - Overstock & Slow')&&v)cell=`<span class="badge badge-warn">${v}</span>`;
+    return `<td title="${v}">${cell}</td>`;
+  }).join('')+'</tr>').join('');
+}
+
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',i===(t==='loc'?0:1)));
+  document.getElementById('tab-loc').classList.toggle('active',t==='loc');
+  document.getElementById('tab-sku').classList.toggle('active',t==='sku');
+}
+
+// ── summary ───────────────────────────────────────────────────────────────────
+function buildFallback(rows,label){
+  const total=rows.length,yes=rows.filter(r=>r['Recommend Discontinue']==='YES').length;
+  const p1=rows.filter(r=>r['Priority (1=Worst)']===1).length;
+  const never=rows.filter(r=>r['Cat 1 - Never Sold']==='Never Sold').length;
+  const odd=rows.filter(r=>r['Cat 4 - Odd Size']==='Odd Size').length;
+  const over=rows.filter(r=>r['Cat 5 - Overstock & Slow']==='Overstock & Slow').length;
+  const onOrdDisc=rows.filter(r=>r['Recommend Discontinue']==='YES'&&r['Is On Orders']!=='No').length;
+  return `[${label}] Out of ${total.toLocaleString()} ${label.toLowerCase()}, ${yes.toLocaleString()} (${((yes/total)*100).toFixed(1)}%) are recommended for discontinuation. Priority 1: ${p1.toLocaleString()}. Never sold: ${never.toLocaleString()}. Odd Size (Cat 4): ${odd.toLocaleString()}. Overstock & Slow (Cat 5): ${over.toLocaleString()}. Flagged but still on active orders: ${onOrdDisc.toLocaleString()} — requires immediate attention.`;
+}
+
+async function getSummary(rows,label){
+  const total=rows.length,yes=rows.filter(r=>r['Recommend Discontinue']==='YES').length;
+  const p1=rows.filter(r=>r['Priority (1=Worst)']===1).length,p2=rows.filter(r=>r['Priority (1=Worst)']===2).length;
+  const never=rows.filter(r=>r['Cat 1 - Never Sold']==='Never Sold').length;
+  const odd=rows.filter(r=>r['Cat 4 - Odd Size']==='Odd Size').length;
+  const over=rows.filter(r=>r['Cat 5 - Overstock & Slow']==='Overstock & Slow').length;
+  const onOrdDisc=rows.filter(r=>r['Recommend Discontinue']==='YES'&&r['Is On Orders']!=='No').length;
+  const alreadyDisc=rows.filter(r=>r['Recommend Discontinue']==='No - Already Disc.').length;
+  const newItems=rows.filter(r=>r['Recommend Discontinue']==='No - New Item').length;
+  const prompt=`Write a concise 5-6 sentence professional inventory summary for a manager. This is ${label} data. Be direct, use numbers, highlight urgent items. No bullets or headers.\nData: ${total.toLocaleString()} ${label}, ${yes} recommended to discontinue (${((yes/total)*100).toFixed(1)}%), ${p1} Priority 1, ${p2} Priority 2, ${never} never sold, ${odd} odd size (Cat 4), ${over} overstock & slow (Cat 5), ${onOrdDisc} flagged but still on order (urgent), ${alreadyDisc} already discontinued (skipped), ${newItems} new items (skipped).`;
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),15000);
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',signal:ctrl.signal,
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,messages:[{role:'user',content:prompt}]})
+    });
+    clearTimeout(timer);
+    const data=await res.json();
+    return data.content?.find(b=>b.type==='text')?.text||buildFallback(rows,label);
+  }catch{clearTimeout(timer);return buildFallback(rows,label);}
+}
+
+async function generateSummary(){
+  document.getElementById('summaryLoading').classList.add('show');
+  const[locSum,skuSum]=await Promise.all([getSummary(locRows,'Location-Level'),getSummary(skuRows,'SKU-Level')]);
+  document.getElementById('summaryLoc').textContent=locSum;
+  document.getElementById('summarySku').textContent=skuSum;
+  document.getElementById('summaryLoading').classList.remove('show');
+}
+
+function copySummary(){
+  const loc=document.getElementById('summaryLoc').textContent;
+  const sku=document.getElementById('summarySku').textContent;
+  navigator.clipboard.writeText(`LOCATION-LEVEL SUMMARY:\n${loc}\n\nSKU-LEVEL SUMMARY:\n${sku}`)
+    .then(()=>alert('Both summaries copied!')).catch(()=>alert('Copy failed.'));
+}
+
+// ── Excel column ordering ─────────────────────────────────────────────────────
+const FORMULA_COLS = [
+  'Newer (if Added in the Last 3-Month) vs Older Inventory',
+  'Cat 1 - Never Sold','Cat 2 - On Sale & Slow','Cat 3 - Discontinued',
+  'Cat 4 - Odd Size','Cat 5 - Overstock & Slow',
+  'Is in 5 Cat?','Cross-Appearance Count','Recommend Discontinue','Reason',
+  'Is On Orders','Priority (1=Worst)','Risk Score (higher is worst)'
+];
+
+function getOrderedCols(rows, isSku){
+  if(!rows.length)return[];
+  const all=new Set(Object.keys(rows[0]));
+  const formulaSet=new Set(FORMULA_COLS);
+  const extraSet=new Set([WTD_COL, DEMAND_COL, 'Max of Location Average Cost']);
+  const ordered=[];
+
+  // 1. All raw NetSuite columns in original order (skip formula, extra, and removed cols)
+  rawHeaders.forEach(col=>{
+    if(formulaSet.has(col)||extraSet.has(col))return;
+    // On SKU tab, Location Average Cost is replaced by Max of Loc Avg Cost — skip it
+    // On Location tab, keep it as-is
+    if(col==='Location Average Cost'&&isSku)return;
+    ordered.push(col);
+    // Insert Wtd Avg + Demand after Type
+    if(col==='Type'){ordered.push(WTD_COL);ordered.push(DEMAND_COL);}
+    // Insert Max of Loc Avg Cost after Average Cost (SKU tab only)
+    if(col==='Average Cost'&&isSku)ordered.push('Max of Location Average Cost');
+  });
+
+  // 2. Formula columns at end in correct order
+  FORMULA_COLS.forEach(c=>{if(all.has(c))ordered.push(c);});
+
+  return ordered;
+}
+
+// SKU tab header renames
+function skuHeader(col){
+  if(/^Location (Last|First)/i.test(col))return col.replace(/^Location /i,'');
+  if(col==='Location Available')return 'Available';
+  if(col==='Location On Order')return 'On Order';
+  if(col==='Location On Water')return 'On Water';
+  if(col==='Location PO Count')return 'PO Count';
+  return col;
+}
+
+// ── Excel formatting ──────────────────────────────────────────────────────────
+const NUM_FMT_NUMBER   = '#,##0';
+const NUM_FMT_CURRENCY = '"$"#,##0.00';
+const NUM_FMT_DECIMAL  = '#,##0.00';
+
+const DECIMAL_COLS = [DEMAND_COL, WTD_COL, 'Average Cost', 'Max of Location Average Cost', 'Profit %',
+  'Price Level AC','Price Level C','Price Level D','Price Level E','Price Level H','Price Level DC-A',
+  'MAP','Purchase Price','SFTP','Price Level A'];
+
+function isCurrencyCol(col){return CURRENCY_COLS.some(c=>col.includes(c));}
+function isDecimalCol(col){return DECIMAL_COLS.some(c=>col===c||col.includes(c));}
+function isNumberCol(col){
+  return ['Available','On Order','On Water','China Stock','Production','0-30','31-90','91-365',
+    '0-60','61-120','121-180','121-365','121-548','121+','ALL Time','PO Count',
+    'Cross-Appearance','Priority','Risk Score'].some(k=>col.includes(k));
+}
+
+function applyBordersAndFormat(ws, headers){
+  if(!ws['!ref'])return;
+  const range=XLSX.utils.decode_range(ws['!ref']);
+  const border={
+    top:{style:'thin',color:{rgb:'CCCCCC'}},bottom:{style:'thin',color:{rgb:'CCCCCC'}},
+    left:{style:'thin',color:{rgb:'CCCCCC'}},right:{style:'thin',color:{rgb:'CCCCCC'}}
+  };
+  for(let R=range.s.r;R<=range.e.r;R++){
+    for(let C=range.s.c;C<=range.e.c;C++){
+      const addr=XLSX.utils.encode_cell({r:R,c:C});
+      if(!ws[addr])ws[addr]={t:'z',v:''};
+      if(!ws[addr].s)ws[addr].s={};
+      ws[addr].s.border=border;
+      // apply number format to data rows (not header)
+      if(R>0&&headers&&headers[C]){
+        const hdr=headers[C];
+        if(isDecimalCol(hdr))ws[addr].s.numFmt=NUM_FMT_DECIMAL;
+        else if(isNumberCol(hdr))ws[addr].s.numFmt=NUM_FMT_NUMBER;
+      }
+    }
+  }
+}
+
+function rowsToSheet(rows, isSku){
+  if(!rows.length)return XLSX.utils.aoa_to_sheet([]);
+  const ordered=getOrderedCols(rows,isSku);
+  const headers=ordered.map(c=>isSku?skuHeader(c):c);
+  const data=rows.map(r=>ordered.map(c=>{
+    const v=r[c]??'';
+    // keep numbers as numbers, strings as strings
+    if(typeof v==='number')return v;
+    const parsed=parseFloat(v);
+    return (!isNaN(parsed)&&v!==''&&typeof v!=='string')||
+           (typeof v==='string'&&v.trim()!==''&&!isNaN(Number(v.replace(/,/g,'')))&&
+            !v.includes('-')&&v.trim()!=='')?parsed:v;
+  }));
+  const ws=XLSX.utils.aoa_to_sheet([headers,...data]);
+  applyBordersAndFormat(ws,headers);
+  return ws;
+}
+
+function downloadExcel(){
+  if(!locRows.length)return;
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,rowsToSheet(locRows,false),'Location-Based Data');
+  XLSX.utils.book_append_sheet(wb,rowsToSheet(skuRows,true),'SKU-Based Data');
+  XLSX.writeFile(wb,'Cat5_Analysis_Full.xlsx');
+}
+
+function downloadFlaggedExcel(){
+  const sort=rows=>rows.filter(r=>r['Recommend Discontinue']==='YES')
+    .sort((a,b)=>(parseFloat(b['Risk Score (higher is worst)'])||0)-(parseFloat(a['Risk Score (higher is worst)'])||0));
+  const fLoc=sort(locRows),fSku=sort(skuRows);
+  if(!fLoc.length&&!fSku.length){alert('No flagged items found.');return;}
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,rowsToSheet(fLoc,false),'Location-Based Data');
+  XLSX.utils.book_append_sheet(wb,rowsToSheet(fSku,true),'SKU-Based Data');
+  XLSX.writeFile(wb,'Cat5_Analysis_Flagged.xlsx');
+}
+</script>
+</body>
+</html>
