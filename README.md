@@ -1,10 +1,10 @@
 # 🔧 Inventory Analysis AI
-An AI-powered inventory decision tool that replaces a manual, Excel-heavy workflow with an automated analysis engine — delivering actionable discontinuation recommendations and AI-written manager summaries in seconds.
+An AI-powered inventory decision tool that replaces a manual, Excel-heavy workflow with an automated analysis engine - delivering actionable discontinuation recommendations and AI-written manager summaries in seconds.
 
 ---
 
 ## 🧩 The Problem
-Wholesale distributors managing thousands of SKUs across multiple warehouse locations face a recurring challenge: identifying which items to discontinue, discount, or reorder requires pulling data from an ERP (like NetSuite, Oracle, ...), manually applying complex business rules in Excel (multiple files, multiple analysis), and then writing up findings for management — a process that could take hours every cycle.
+Wholesale distributors managing thousands of SKUs across multiple warehouse locations face a recurring challenge: identifying which items to discontinue, discount, or reorder requires pulling data from an ERP (like NetSuite, Oracle, ...), manually applying complex business rules in Excel (multiple files, multiple analysis), and then writing up findings for management - a process that could take hours every cycle.
 
 ---
 
@@ -18,12 +18,12 @@ This tool ingests a raw Inventory CSV export (exported from NetSuite) and automa
 - Generates an **AI-written manager summary** via the Claude API
 - Exports a **formatted two-tab Excel file** (Location-Based + SKU-Based)
 
-All of this runs locally in the browser — no backend, no server, no installation required.
+All of this runs locally in the browser - no backend, no server, no installation required.
 
 ---
 
 ## ⚙️ Configurable Settings Panel
-The tool includes a fully configurable settings panel (click the ⚙️ button in the top right) — no code editing required.
+The tool includes a fully configurable settings panel (click the ⚙️ button in the top right) - no code editing required.
 
 | Setting Group | What You Can Configure |
 |---------------|----------------------|
@@ -31,7 +31,7 @@ The tool includes a fully configurable settings panel (click the ⚙️ button i
 | **Category Flag Thresholds** | Cat 2 slow sales limits, Cat 4 percentile cutoff, Cat 5 months of supply + all slow sales windows |
 | **Risk Score Weights** | All 9 individual weight values (Never Sold, No Sales windows, per flag bonus, On Order penalty, Low Stock) |
 
-- Changes apply **immediately** — click Save & Apply and the analysis re-runs on your loaded data instantly
+- Changes apply **immediately** - click Save & Apply and the analysis re-runs on your loaded data instantly
 - Settings **persist across sessions** via browser localStorage
 - **Reset to Defaults** restores all original values with one click
 
@@ -57,7 +57,7 @@ The tool includes a fully configurable settings panel (click the ⚙️ button i
 | Cat 1 - Never Sold | ALL Time sales = 0 |
 | Cat 2 - On Sale & Slow | On Sale = Yes AND no sales in 6mo AND all-time < 50 |
 | Cat 3 - Discontinued | Discontinued Item = Yes |
-| Cat 4 - Odd Size | Raw Size is in bottom 25th percentile of 12mo sales for its category (Wheel/Tire calculated separately as their sizes are different — tool handles this automatically) |
+| Cat 4 - Odd Size | Raw Size is in bottom 25th percentile of 12mo sales for its category (Wheel/Tire calculated separately as their sizes are different - tool handles this automatically) |
 | Cat 5 - Overstock & Slow | Months of supply ≥ 3 AND slow sales thresholds met across all time windows |
 
 ### Weighted Average Demand Formula
@@ -90,15 +90,15 @@ Inventory-Analysis-AI/
 ---
 
 ## 🛠 Built With
-- **Vanilla HTML/CSS/JavaScript** — runs locally, zero dependencies to install and it's FREE to use
-- **PapaParse** — CSV parsing
-- **SheetJS (xlsx)** — Excel export with formatting and borders
-- **Anthropic Claude API** — AI-generated manager summaries
-- **NetSuite** — ERP data source (CSV export)
+- **Vanilla HTML/CSS/JavaScript** - runs locally, zero dependencies to install and it's FREE to use
+- **PapaParse** - CSV parsing
+- **SheetJS (xlsx)** - Excel export with formatting and borders
+- **Anthropic Claude API** - AI-generated manager summaries
+- **NetSuite** - ERP data source (CSV export)
 
 ---
 
 ## 👤 Author
-Built by **Moka Kashinejad** — Head of Data & Analytics | AI & Data Strategy
+Built by **Moka Kashinejad** - Head of Data & Analytics | AI & Data Strategy
 
 [LinkedIn](https://linkedin.com/in/moka-kashinejad) · [GitHub](https://github.com/Mokakash)
