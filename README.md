@@ -39,7 +39,7 @@ The tool includes a fully configurable settings panel (click the ⚙️ button i
 
 ## 🚀 How to Use
 1. Clone or download this repo
-2. Open **[▶ Launch Tool](https://mokakash.github.io/Inventory-Analysis-AI/inventory_analysis_tool.html)** directly in your browser — no installation needed (Chrome or Edge recommended)
+2. Open **[▶ Launch Tool](https://mokakash.github.io/Inventory-Analysis-AI/inventory_analysis_tool.html)** directly in your browser - no installation needed (Chrome or Edge recommended)
 3. Upload your inventory CSV export (have the fields you see in my "sample_inventory.csv" file before using the tool)
 4. Review the stats dashboard and AI-generated summary
 5. (Optional) Click ⚙️ Settings to adjust exclusions or thresholds, then Save & Apply
